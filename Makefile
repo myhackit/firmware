@@ -46,6 +46,9 @@ TARGET = firmware
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC =	$(TARGET).c \
+	sd-reader/sd_raw.c \
+	sd-reader/partition.c \
+	sd-reader/fat.c \
 	usb_keyboard_debug.c \
 	print.c
 

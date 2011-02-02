@@ -5,6 +5,12 @@
 #include "usb_keyboard_debug.h"
 #include "print.h"
 
+#include <sd-reader/fat.h>
+#include <sd-reader/fat_config.h>
+#include <sd-reader/partition.h>
+#include <sd-reader/sd_raw.h>
+#include <sd-reader/sd_raw_config.h>
+
 #define LED_CONFIG	(DDRD |= (1<<6))
 #define LED_ON		(PORTD &= ~(1<<6))
 #define LED_OFF		(PORTD |= (1<<6))
@@ -41,7 +47,7 @@ char map_toggle[ROWS][COLS] = {
 	{ 0             , MOUSE_BTNL     , MOUSE_BTNM     , MOUSE_BTNR     , 0              , 0              , KEY_RIGHT_SHIFT},
 	{ 0             , KEY_BACKSPACE  , 0              , KEY_RIGHT_GUI  , KEY_RIGHT_ALT  , KEY_RIGHT_CTRL , KEY_TOGGLE     },
 };
-#define EMPTY_ROW {1,1,1,1,1,1,1}
+#define EMPTY_ROW {0xfe,0xfe,0xfe,0xfe,0xfe,0xfe,0xfe}
 #define ZERO_ROW {0,0,0,0,0,0,0}
 #define MOUSE_SPEED 50
 #define JUST_SWITCHED   0x80
@@ -51,6 +57,18 @@ char map_toggle[ROWS][COLS] = {
 
 char key_history[ROWS][COLS] = {EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW};
 uint16_t key_ticks[ROWS][COLS] = {ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW};
+
+
+
+
+static uint8_t read_line(char* buffer, uint8_t buffer_length);
+static uint32_t strtolong(const char* str);
+static uint8_t find_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name, struct fat_dir_entry_struct* dir_entry);
+static struct fat_file_struct* open_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name); 
+static uint8_t print_disk_info(const struct fat_fs_struct* fs);
+
+
+
 
 int main(void)
 {
@@ -70,15 +88,15 @@ int main(void)
 
 	//0=Input 1=Output
 	// Columns Input, Rows Output
-	DDRB = 0x00;
 	DDRC = 0x7f;
 	DDRD = 0x00;
+	DDRF = 0x00;
 
 	//if DDR=1, 0=Low Output, 1=High Output
 	//if DDR=0, 0=Normal, 1=Pullup Resistor
-	PORTB = 0xff;
 	PORTC = 0xff;
 	PORTD = 0xff;
+	PORTF = 0xff;
 
 	LED_CONFIG;
 	LED_OFF;
@@ -95,6 +113,103 @@ int main(void)
 
 	print("Starting myhackit\n");
 
+        /* setup sd card slot */
+        if(!sd_raw_init())
+        {
+            print("MMC/SD initialization failed\n");
+#if DEBUG
+#endif
+        }
+
+        /* open first partition */
+        struct partition_struct* partition = partition_open(sd_raw_read,
+                                                            sd_raw_read_interval,
+#if SD_RAW_WRITE_SUPPORT
+                                                            sd_raw_write,
+                                                            sd_raw_write_interval,
+#else
+                                                            0,
+                                                            0,
+#endif
+                                                            0
+                                                           );
+
+        if(!partition)
+        {
+            /* If the partition did not open, assume the storage device
+             * is a "superfloppy", i.e. has no MBR.
+             */
+            partition = partition_open(sd_raw_read,
+                                       sd_raw_read_interval,
+#if SD_RAW_WRITE_SUPPORT
+                                       sd_raw_write,
+                                       sd_raw_write_interval,
+#else
+                                       0,
+                                       0,
+#endif
+                                       -1
+                                      );
+            if(!partition)
+            {
+                print("opening partition failed\n");
+#if DEBUG
+#endif
+            }
+        }
+
+        /* open file system */
+        struct fat_fs_struct* fs = fat_open(partition);
+        if(!fs)
+        {
+            print("opening filesystem failed\n");
+#if DEBUG
+#endif
+        }
+
+        /* open root directory */
+        struct fat_dir_entry_struct directory;
+        fat_get_dir_entry_of_path(fs, "/", &directory);
+
+        struct fat_dir_struct* dd = fat_open_dir(fs, &directory);
+        if(!dd)
+        {
+            print("opening root directory failed\n");
+#if DEBUG
+#endif
+        }
+
+	    /* search file in current directory and open it */
+	    struct fat_file_struct* fd = open_file_in_dir(fs, dd, "TEST");
+	    if(!fd)
+	    {
+		  print("error opening ");
+		  print("TEST");
+		  print("\n");
+	    }
+
+	    /* print file contents */
+	    uint8_t buffer[8];
+	    uint32_t offset = 0;
+	    while(fat_read_file(fd, buffer, sizeof(buffer)) > 0)
+	    {
+		  phex(offset);
+		  print(": ");
+		  for(uint8_t i = 0; i < 8; ++i)
+		  {
+			phex(buffer[i]);
+			print(" ");
+		  }
+		  for(uint8_t i = 0; i < 8; ++i)
+		  {
+			usb_debug_putchar(buffer[i]);
+		  }
+		  print("\n");
+		  offset += 8;
+	    }
+	    fat_close_file(fd);
+
+
 	while (1) {
 		//Read in the current key state
 		toggle_mode = 0;
@@ -104,7 +219,7 @@ int main(void)
 				if (row<5){ //Left Side
 					if ((PIND & (1<<(row+1))) ^ (!ASSERTED)) key_history[row][col] |= 1;
 				} else { //Right Side
-					if ((PINB & (1<<(row-5))) ^ (!ASSERTED)) key_history[row][col] |= 1;
+					if ((PINF & (1<<(row-5))) ^ (!ASSERTED)) key_history[row][col] |= 1;
 				}
 				key_history[row][col] <<= 1;
 
@@ -184,4 +299,27 @@ int main(void)
 
 		continue;
 	}
+}
+
+struct fat_file_struct* open_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name)
+{
+    struct fat_dir_entry_struct file_entry;
+    if(!find_file_in_dir(fs, dd, name, &file_entry))
+        return 0;
+
+    return fat_open_file(fs, &file_entry);
+}
+
+uint8_t find_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name, struct fat_dir_entry_struct* dir_entry)
+{
+    while(fat_read_dir(dd, dir_entry))
+    {
+        if(strcmp(dir_entry->long_name, name) == 0)
+        {
+            fat_reset_dir(dd);
+            return 1;
+        }
+    }
+
+    return 0;
 }
