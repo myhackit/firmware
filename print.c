@@ -57,6 +57,11 @@ void phex16(unsigned int i)
 	phex(i);
 }
 
-
+void pbin(unsigned char c)
+{
+	for(int i=7;i>=0;i--){
+		usb_debug_putchar((c&(1<<i))?'1':'0');
+	}
+}
 
 

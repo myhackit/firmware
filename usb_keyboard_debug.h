@@ -129,6 +129,15 @@ void usb_debug_flush_output(void);	// immediately transmit any buffered output
 #define KEY_RIGHT_GUI	231
 
 //Above 232 is "reserved" so we will piggy back our command there
+#define MACRO_1    232
+#define MACRO_2    233
+#define MACRO_3    234
+#define MACRO_4    235
+#define MACRO_5    236
+#define MACRO_6    237
+#define MACRO_7    238
+#define MACRO_8    239
+
 #define MOUSE_N	   240
 #define MOUSE_NE   241
 #define MOUSE_E    242
