@@ -25,146 +25,77 @@
 #define ROWS 10
 #define COLS 7
 
+#define MAP_SIZE 130	
 
-uint16_t lookup_key(const char* key){
-	if      (!strcmp(key,"0")) return 0;
-	else if (!strcmp(key,"A")) return 4;
-	else if (!strcmp(key,"B")) return 5;
-	else if (!strcmp(key,"C")) return 6;
-	else if (!strcmp(key,"D")) return 7;
-	else if (!strcmp(key,"E")) return 8;
-	else if (!strcmp(key,"F")) return 9;
-	else if (!strcmp(key,"G")) return 10;
-	else if (!strcmp(key,"H")) return 11;
-	else if (!strcmp(key,"I")) return 12;
-	else if (!strcmp(key,"J")) return 13;
-	else if (!strcmp(key,"K")) return 14;
-	else if (!strcmp(key,"L")) return 15;
-	else if (!strcmp(key,"M")) return 16;
-	else if (!strcmp(key,"N")) return 17;
-	else if (!strcmp(key,"O")) return 18;
-	else if (!strcmp(key,"P")) return 19;
-	else if (!strcmp(key,"Q")) return 20;
-	else if (!strcmp(key,"R")) return 21;
-	else if (!strcmp(key,"S")) return 22;
-	else if (!strcmp(key,"T")) return 23;
-	else if (!strcmp(key,"U")) return 24;
-	else if (!strcmp(key,"V")) return 25;
-	else if (!strcmp(key,"W")) return 26;
-	else if (!strcmp(key,"X")) return 27;
-	else if (!strcmp(key,"Y")) return 28;
-	else if (!strcmp(key,"Z")) return 29;
-	else if (!strcmp(key,"1")) return 30;
-	else if (!strcmp(key,"2")) return 31;
-	else if (!strcmp(key,"3")) return 32;
-	else if (!strcmp(key,"4")) return 33;
-	else if (!strcmp(key,"5")) return 34;
-	else if (!strcmp(key,"6")) return 35;
-	else if (!strcmp(key,"7")) return 36;
-	else if (!strcmp(key,"8")) return 37;
-	else if (!strcmp(key,"9")) return 38;
-	else if (!strcmp(key,"0")) return 39;
-	else if (!strcmp(key,"ENTER")) return 40;
-	else if (!strcmp(key,"ESC")) return 41;
-	else if (!strcmp(key,"BACKSPACE")) return 42;
-	else if (!strcmp(key,"TAB")) return 43;
-	else if (!strcmp(key,"SPACE")) return 44;
-	else if (!strcmp(key,"MINUS")) return 45;
-	else if (!strcmp(key,"EQUAL")) return 46;
-	else if (!strcmp(key,"LEFT_BRACE")) return 47;
-	else if (!strcmp(key,"RIGHT_BRACE")) return 48;
-	else if (!strcmp(key,"BACKSLASH")) return 49;
-	else if (!strcmp(key,"NUMBER")) return 50;
-	else if (!strcmp(key,"SEMICOLON")) return 51;
-	else if (!strcmp(key,"QUOTE")) return 52;
-	else if (!strcmp(key,"TILDE")) return 53;
-	else if (!strcmp(key,"COMMA")) return 54;
-	else if (!strcmp(key,"PERIOD")) return 55;
-	else if (!strcmp(key,"SLASH")) return 56;
-	else if (!strcmp(key,"CAPS_LOCK")) return 57;
-	else if (!strcmp(key,"F1")) return 58;
-	else if (!strcmp(key,"F2")) return 59;
-	else if (!strcmp(key,"F3")) return 60;
-	else if (!strcmp(key,"F4")) return 61;
-	else if (!strcmp(key,"F5")) return 62;
-	else if (!strcmp(key,"F6")) return 63;
-	else if (!strcmp(key,"F7")) return 64;
-	else if (!strcmp(key,"F8")) return 65;
-	else if (!strcmp(key,"F9")) return 66;
-	else if (!strcmp(key,"F10")) return 67;
-	else if (!strcmp(key,"F11")) return 68;
-	else if (!strcmp(key,"F12")) return 69;
-	else if (!strcmp(key,"PRINTSCREEN")) return 70;
-	else if (!strcmp(key,"SCROLL_LOCK")) return 71;
-	else if (!strcmp(key,"PAUSE")) return 72;
-	else if (!strcmp(key,"INSERT")) return 73;
-	else if (!strcmp(key,"HOME")) return 74;
-	else if (!strcmp(key,"PAGE_UP")) return 75;
-	else if (!strcmp(key,"DELETE")) return 76;
-	else if (!strcmp(key,"END")) return 77;
-	else if (!strcmp(key,"PAGE_DOWN")) return 78;
-	else if (!strcmp(key,"RIGHT")) return 79;
-	else if (!strcmp(key,"LEFT")) return 80;
-	else if (!strcmp(key,"DOWN")) return 81;
-	else if (!strcmp(key,"UP")) return 82;
-	else if (!strcmp(key,"NUM_LOCK")) return 83;
-	else if (!strcmp(key,"KEYPAD_SLASH")) return 84;
-	else if (!strcmp(key,"KEYPAD_ASTERIX")) return 85;
-	else if (!strcmp(key,"KEYPAD_MINUS")) return 86;
-	else if (!strcmp(key,"KEYPAD_PLUS")) return 87;
-	else if (!strcmp(key,"KEYPAD_ENTER")) return 88;
-	else if (!strcmp(key,"KEYPAD_1")) return 89;
-	else if (!strcmp(key,"KEYPAD_2")) return 90;
-	else if (!strcmp(key,"KEYPAD_3")) return 91;
-	else if (!strcmp(key,"KEYPAD_4")) return 92;
-	else if (!strcmp(key,"KEYPAD_5")) return 93;
-	else if (!strcmp(key,"KEYPAD_6")) return 94;
-	else if (!strcmp(key,"KEYPAD_7")) return 95;
-	else if (!strcmp(key,"KEYPAD_8")) return 96;
-	else if (!strcmp(key,"KEYPAD_9")) return 97;
-	else if (!strcmp(key,"KEYPAD_0")) return 98;
-	else if (!strcmp(key,"KEYPAD_PERIOD")) return 99;
-	else if (!strcmp(key,"CTRL")) return 224;
-	else if (!strcmp(key,"SHIFT")) return 225;
-	else if (!strcmp(key,"ALT")) return 226;
-	else if (!strcmp(key,"GUI")) return 227;
-	else if (!strcmp(key,"LEFT_CTRL")) return 224;
-	else if (!strcmp(key,"LEFT_SHIFT")) return 225;
-	else if (!strcmp(key,"LEFT_ALT")) return 226;
-	else if (!strcmp(key,"LEFT_GUI")) return 227;
-	else if (!strcmp(key,"RIGHT_CTRL")) return 228;
-	else if (!strcmp(key,"RIGHT_SHIFT")) return 229;
-	else if (!strcmp(key,"RIGHT_ALT")) return 230;
-	else if (!strcmp(key,"RIGHT_GUI")) return 231;
+typedef struct{
+	char name[30];
+	int  id;
+} pair;
 
-	else if (!strcmp(key,"MACRO_1")) return 232;
-	else if (!strcmp(key,"MACRO_2")) return 233;
-	else if (!strcmp(key,"MACRO_3")) return 234;
-	else if (!strcmp(key,"MACRO_4")) return 235;
-	else if (!strcmp(key,"MACRO_5")) return 236;
-	else if (!strcmp(key,"MACRO_6")) return 237;
-	else if (!strcmp(key,"MACRO_7")) return 238;
-	else if (!strcmp(key,"MACRO_8")) return 239;
+pair str_map[MAP_SIZE] = {
+	//2 Misc (Fail early)
+	{"NA",0},    {"TOGGLE",KEY_TOGGLE},
+	//25 Alphabetic
+	{"A",KEY_A}, {"B",KEY_B}, {"C",KEY_C}, {"D",KEY_D}, {"E",KEY_E}, 
+	{"F",KEY_F}, {"G",KEY_G}, {"H",KEY_H}, {"I",KEY_I}, {"J",KEY_J}, 
+	{"K",KEY_K}, {"L",KEY_L}, {"M",KEY_M}, {"N",KEY_N}, {"O",KEY_O}, 
+	{"P",KEY_P}, {"Q",KEY_Q}, {"R",KEY_R}, {"S",KEY_S}, {"T",KEY_T}, 
+	{"U",KEY_U}, {"V",KEY_V}, {"W",KEY_W}, {"X",KEY_X}, {"Y",KEY_Y},
+	{"Z",KEY_Z}, 
+	//10 Numeric Keys
+	{"1",KEY_1}, {"2",KEY_2}, {"3",KEY_3}, {"4",KEY_4}, {"5",KEY_5}, 
+	{"6",KEY_6}, {"7",KEY_7}, {"8",KEY_8}, {"9",KEY_9}, {"0",KEY_0}, 
+	//8 Macros
+	{"MACRO_1",MACRO_1}, {"MACRO_2",MACRO_2}, {"MACRO_3",MACRO_3},
+	{"MACRO_4",MACRO_4}, {"MACRO_5",MACRO_5}, {"MACRO_6",MACRO_6},
+     	{"MACRO_7",MACRO_7}, {"MACRO_8",MACRO_8},
+	//18 Command
+	{"ENTER",KEY_ENTER},   {"ESC",KEY_ESC},     {"BACKSPACE",KEY_BACKSPACE},
+     	{"TAB",KEY_TAB},       {"SPACE",KEY_SPACE}, {"MINUS",KEY_MINUS},
+     	{"EQUAL",KEY_EQUAL},   {"LEFT_BRACE",KEY_LEFT_BRACE}, 
+	{"RIGHT_BRACE",KEY_RIGHT_BRACE},            {"BACKSLASH",KEY_BACKSLASH}, 
+	{"NUMBER",KEY_NUMBER}, {"SEMICOLON",KEY_SEMICOLON},
+     	{"QUOTE",KEY_QUOTE},   {"TILDE",KEY_TILDE}, {"COMMA",KEY_COMMA}, 
+	{"PERIOD",KEY_PERIOD}, {"SLASH",KEY_SLASH}, {"CAPS_LOCK",KEY_CAPS_LOCK},
+	//12 Function Keys
+	{"F1",KEY_F1}, {"F2",KEY_F2},   {"F3",KEY_F3},   {"F4",KEY_F4},
+     	{"F5",KEY_F5}, {"F6",KEY_F6},   {"F7",KEY_F7},   {"F8",KEY_F8}, 
+	{"F9",KEY_F9}, {"F10",KEY_F10}, {"F11",KEY_F11}, {"F12",KEY_F12},
+	//14		
+	{"PRINTSCREEN",KEY_PRINTSCREEN}, {"SCROLL_LOCK",KEY_SCROLL_LOCK},
+     	{"PAUSE",KEY_PAUSE},         {"INSERT",KEY_INSERT}, {"HOME",KEY_HOME},
+	{"PAGE_UP",KEY_PAGE_UP},     {"DELETE",KEY_DELETE}, {"END",KEY_END},
+     	{"PAGE_DOWN",KEY_PAGE_DOWN}, {"RIGHT",KEY_RIGHT},   {"LEFT",KEY_LEFT}, 
+	{"DOWN",KEY_DOWN}, {"UP",KEY_UP}, {"NUM_LOCK",KEY_NUM_LOCK},
+	//16 Keypad keys
+	{"KEYPAD_SLASH",KEYPAD_SLASH}, {"KEYPAD_ASTERIX",KEYPAD_ASTERIX}, 
+	{"KEYPAD_MINUS",KEYPAD_MINUS}, {"KEYPAD_PLUS",KEYPAD_PLUS}, 
+	{"KEYPAD_ENTER",KEYPAD_ENTER}, {"KEYPAD_PERIOD",KEYPAD_PERIOD},
+	{"KEYPAD_1",KEYPAD_1}, {"KEYPAD_2",KEYPAD_2}, {"KEYPAD_3",KEYPAD_3},
+	{"KEYPAD_4",KEYPAD_4}, {"KEYPAD_5",KEYPAD_5}, {"KEYPAD_6",KEYPAD_6},
+	{"KEYPAD_7",KEYPAD_7}, {"KEYPAD_8",KEYPAD_8}, {"KEYPAD_9",KEYPAD_9},
+	{"KEYPAD_0",KEYPAD_0},
+	//12 Meta Keys
+	{"CTRL",KEY_CTRL}, {"SHIFT",KEY_SHIFT}, {"ALT",KEY_ALT}, {"GUI",KEY_GUI},
+	{"LEFT_CTRL",KEY_LEFT_CTRL},   {"LEFT_SHIFT",KEY_LEFT_SHIFT},
+     	{"LEFT_ALT",KEY_LEFT_ALT},     {"LEFT_GUI",KEY_LEFT_GUI},
+	{"RIGHT_CTRL",KEY_RIGHT_CTRL}, {"RIGHT_SHIFT",KEY_RIGHT_SHIFT},
+     	{"RIGHT_ALT",KEY_RIGHT_ALT},   {"RIGHT_GUI",KEY_RIGHT_GUI},
+	//8 Mouse Directions
+	{"MOUSE_N",MOUSE_N},   {"MOUSE_NE",MOUSE_NE}, {"MOUSE_E",MOUSE_E},
+	{"MOUSE_SE",MOUSE_SE}, {"MOUSE_S",MOUSE_S},   {"MOUSE_SW",MOUSE_SW},
+	{"MOUSE_W",MOUSE_W},   {"MOUSE_NW",MOUSE_NW},
+	//5 Mouse Controls
+	{"MOUSE_BTNL",MOUSE_BTNL}, {"MOUSE_BTNM",MOUSE_BTNM}, {"MOUSE_BTNR",MOUSE_BTNR},
+	{"MOUSE_SCROLL_UP",MOUSE_SCROLL_UP}, {"MOUSE_SCROLL_DN",MOUSE_SCROLL_DN},
+};
 
-	else if (!strcmp(key,"MOUSE_N")) return 240;
-	else if (!strcmp(key,"MOUSE_NE")) return 241;
-	else if (!strcmp(key,"MOUSE_E")) return 242;
-	else if (!strcmp(key,"MOUSE_SE")) return 243;
-	else if (!strcmp(key,"MOUSE_S")) return 244;
-	else if (!strcmp(key,"MOUSE_SW")) return 245;
-	else if (!strcmp(key,"MOUSE_W")) return 246;
-	else if (!strcmp(key,"MOUSE_NW")) return 247;
-	else if (!strcmp(key,"MOUSE_BTNL")) return 248;
-	else if (!strcmp(key,"MOUSE_BTNM")) return 249;
-	else if (!strcmp(key,"MOUSE_BTNR")) return 250;
-	else if (!strcmp(key,"MOUSE_SCROLL_UP")) return 251;
-	else if (!strcmp(key,"MOUSE_SCROLL_DN")) return 252;
-	else if (!strcmp(key,"TOGGLE")) return 255;
+uint16_t lookup_id(const char* id){
+	for(int i=0;i<MAP_SIZE;i++) if(!strcmp(id,str_map[i].name)) return str_map[i].id;
 	return 0;
 }
 
-char map_default[ROWS][COLS]
-= {
+char map_default[ROWS][COLS] = {
 	//LEFT SIDE
 	{ KEY_ESC       , KEY_1          , KEY_2          , KEY_3          , KEY_4          , KEY_5          , 0              }, 
 	{ KEY_TAB       , KEY_Q          , KEY_W          , KEY_E          , KEY_R          , KEY_T          , 0              },
@@ -178,8 +109,7 @@ char map_default[ROWS][COLS]
 	{ KEY_N         , KEY_M          , KEY_COMMA      , KEY_PERIOD     , KEY_BACKSLASH  , KEY_SLASH      , KEY_RIGHT_SHIFT},
 	{ KEY_TOGGLE    , KEY_SPACE      , 0              , KEY_RIGHT_GUI  , KEY_RIGHT_ALT  , KEY_RIGHT_CTRL , KEY_TOGGLE     },
 };
-char map_toggle[ROWS][COLS]
-= {
+char map_toggle[ROWS][COLS] = {
 	//LEFT SIDE
 	{ KEY_TILDE     , KEY_F1         , KEY_F2         , KEY_F3         , KEY_F4         , KEY_F5         , 0              }, 
 	{ KEY_TAB       , 0              , MACRO_2        , MOUSE_N        , MACRO_1        , MOUSE_SCROLL_UP, 0              },
@@ -310,8 +240,8 @@ int main(void) {
 	uint8_t map_toggle2 = 0;
 	uint8_t side = 0;
 	uint8_t length = 0;
-	uint8_t map_row = 0;
 	uint8_t map_col = 0;
+	uint8_t map_row = 0;
 	uint8_t ignore = 0;
 	uint8_t which_key[30];
 	while(fat_read_file(fd, buffer, sizeof(buffer)) > 0){
@@ -326,18 +256,20 @@ int main(void) {
 			} else {
 				if(!ignore){
 					if(offset == 1){
-						map_row = buffer[i]-49;
+						    map_row = buffer[i]-49;
 					} else if(offset > 3){
 						switch (buffer[i]) {
+							case '\r':
+							case '\t':
 							case ' ':
 							break;
 							case '\n':
 							case ',':
 								which_key[length] = '\0';
 								if(map_toggle2){
-									//map_toggle[side*5+map_row][map_col] = lookup_key(which_key);
+									map_toggle[side*5+map_row][map_col] = lookup_id(which_key);
 								} else {
-									//map_default[side*5+map_row][map_col] = lookup_key(which_key);
+									map_default[side*5+map_row][map_col] = lookup_id(which_key);
 								}
 								for(uint8_t j=0;j<length;j++){
 									usb_debug_putchar(which_key[j]);
