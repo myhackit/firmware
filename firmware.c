@@ -25,7 +25,7 @@
 #define ROWS 10
 #define COLS 7
 
-#define MAP_SIZE 130	
+#define MAP_SIZE 137
 
 typedef struct{
 	char name[30];
@@ -95,9 +95,12 @@ uint16_t lookup_id(const char* id){
 	return 0;
 }
 
-char map_default[ROWS][COLS] = {
+
+
+
+char map_def[ROWS][COLS] = {
 	//LEFT SIDE
-	{ KEY_ESC       , KEY_1          , KEY_2          , KEY_3          , KEY_4          , KEY_5          , 0              }, 
+	{ KEY_ESC       , KEY_5          , KEY_2          , KEY_3          , KEY_4          , KEY_5          , 0              }, 
 	{ KEY_TAB       , KEY_Q          , KEY_W          , KEY_E          , KEY_R          , KEY_T          , 0              },
 	{ KEY_CAPS_LOCK , KEY_A          , KEY_S          , KEY_D          , KEY_F          , KEY_G          , 0              },
 	{ KEY_LEFT_SHIFT, KEY_Z          , KEY_X          , KEY_C          , KEY_V          , KEY_B          , 0              },
@@ -109,7 +112,7 @@ char map_default[ROWS][COLS] = {
 	{ KEY_N         , KEY_M          , KEY_COMMA      , KEY_PERIOD     , KEY_BACKSLASH  , KEY_SLASH      , KEY_RIGHT_SHIFT},
 	{ KEY_TOGGLE    , KEY_SPACE      , 0              , KEY_RIGHT_GUI  , KEY_RIGHT_ALT  , KEY_RIGHT_CTRL , KEY_TOGGLE     },
 };
-char map_toggle[ROWS][COLS] = {
+char map_tog[ROWS][COLS] = {
 	//LEFT SIDE
 	{ KEY_TILDE     , KEY_F1         , KEY_F2         , KEY_F3         , KEY_F4         , KEY_F5         , 0              }, 
 	{ KEY_TAB       , 0              , MACRO_2        , MOUSE_N        , MACRO_1        , MOUSE_SCROLL_UP, 0              },
@@ -136,10 +139,76 @@ uint16_t macro_1_time[11] = { 30,100, 30,30, 30,100, 30,100,30,100,30 };
 static uint8_t find_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name, struct fat_dir_entry_struct* dir_entry);
 static struct fat_file_struct* open_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name); 
 //static uint8_t print_disk_info(const struct fat_fs_struct* fs);
+//
+//
+
+
+void prrint(char* line){
+	for(uint8_t i=0;i<strlen(line);++i){
+		usb_debug_putchar(line[i]);
+	}
+}
+
+char *tok;
+uint8_t which_map, map_col, map_row = 0;
+void parse_layout(char* line){
+	if(strcmp(line,"[MAIN]")==0){
+		which_map = 0;
+		map_row = 0;
+	} else if(strcmp(line,"[TOGGLE]")==0){
+		which_map = 1;
+		map_row = 0;
+	} else { //Have full line, let's toke
+		map_col = 0;
+		tok = strtok(line,",");
+		while(tok != NULL){
+			if(which_map == 0) map_def[map_row][map_col] = lookup_id(tok);
+			if(which_map == 1) map_tog[map_row][map_col] = lookup_id(tok);
+			tok = strtok(NULL,",");
+			map_col++;
+		}
+		map_row++;
+	}
+}
+
+uint8_t macro_idx = 0;
+void parse_macro(char* line){
+	if(memcmp(line,"[MACRO_",7)==0){
+		macro_idx = line[7] - '0' - 1;
+	} else { //Have full line, let's toke
+		tok = strtok(line,",");
+		while(tok != NULL){
+			prrint(tok);
+			tok = strtok(NULL,",");
+		}
+	}
+}
+
+void lineize(struct fat_file_struct* fd, void (*process_line)(char*) ){
+	uint8_t read_buffer[32];
+	uint8_t line[300];
+	uint8_t pos = 0;
+
+	while(fat_read_file(fd, read_buffer, sizeof(read_buffer)) > 0){
+		for(uint8_t i=0;i<sizeof(read_buffer);++i){
+			switch (read_buffer[i]) {
+				case '\r': case '\t': case ' ': //Ignore white space
+				continue;
+				case '\n': //How to detect missing newline before EOF?
+					if(pos == 0) continue; //Ignore blank lines
+					line[pos] = '\0';
+					process_line(line);
+					pos = 0;
+				continue;
+			}
+			line[pos++] = read_buffer[i];
+		}
+	}
+}
 
 int main(void) {
 
-	uint8_t row, col, i, j, key, toggle_mode, delta;
+	uint8_t row, col, i, j, key, delta;
 	uint8_t mouse_left_prev, mouse_middle_prev, mouse_right_prev;
 	uint16_t ticks;
 	int8_t x, y, wheel, mouse_left, mouse_middle, mouse_right;
@@ -220,7 +289,6 @@ int main(void) {
 	}
 #endif
 
-	/* search file in current directory and open it */
 	struct fat_file_struct* fd = open_file_in_dir(fs, dd, "myhackit");
 #if DEBUG
 	if(!fd){
@@ -228,83 +296,16 @@ int main(void) {
 	}
 #endif
 
-	/* print file contents */
-	uint8_t buffer[8];
-	/*char* line = malloc(300);
-	strcpy(line, "hello, ");
-	strcat(line,"good afternoon");
-	for(j=0;j<strlen(line);j++){
-		usb_debug_putchar(line[j]);
-	}*/
-	uint32_t offset = 0;
-	uint8_t map_toggle2 = 0;
-	uint8_t side = 0;
-	uint8_t length = 0;
-	uint8_t map_col = 0;
-	uint8_t map_row = 0;
-	uint8_t ignore = 0;
-	uint8_t which_key[30];
-	while(fat_read_file(fd, buffer, sizeof(buffer)) > 0){
-		for(uint8_t i = 0; i < sizeof(buffer); ++i){
-			if(offset == 0){
-				switch (buffer[i]) {
-					case 'L': side = 0; break;
-					case 'R': side = 1; break;
-					case 'M': map_toggle2 = 0; ignore = 1; break;
-					case 'T': map_toggle2 = 1; ignore = 1; break;
-				}
-			} else {
-				if(!ignore){
-					if(offset == 1){
-						    map_row = buffer[i]-49;
-					} else if(offset > 3){
-						switch (buffer[i]) {
-							case '\r':
-							case '\t':
-							case ' ':
-							break;
-							case '\n':
-							case ',':
-								which_key[length] = '\0';
-								if(map_toggle2){
-									map_toggle[side*5+map_row][map_col] = lookup_id(which_key);
-								} else {
-									map_default[side*5+map_row][map_col] = lookup_id(which_key);
-								}
-								for(uint8_t j=0;j<length;j++){
-									usb_debug_putchar(which_key[j]);
-								}
-								print(", ");
-								length = 0;
-								if (buffer[i]=='\n') {
-									map_col = 0;
-								} else {
-									map_col++;
-								}
-							break;
-							default:
-								which_key[length++]=buffer[i];
-							break;
-						
-						}
-					}
-				}
-			}
-			//usb_debug_putchar(buffer[i]);
-			offset += 1;
-			if(buffer[i] == '\n'){
-				offset = 0;
-				ignore = 0;
-			} 
-		}
-	}
+	lineize(fd, parse_layout);
 	fat_close_file(fd);
 
-
+	fd = open_file_in_dir(fs, dd, "macros");
+	lineize(fd, parse_macro);
+	fat_close_file(fd);
 
 	while (1) {
 		//Read in the current key state
-		toggle_mode = 0;
+		which_map = 0;
 		for(row=0;row<10;row++){
 			if(row<5){
 				PORTD &= ~(1<<row);
@@ -316,16 +317,21 @@ int main(void) {
 				if ((PINC & (1<<col)) ^ (!ASSERTED)) key_history[row][col] |= 1;
 				key_history[row][col] <<= 1;
 
-				if (key_history[row][col] == JUST_SWITCHED){
-					key_ticks[row][col] = 1;
-				} else if (key_history[row][col] == STILL_ON) {
-					key_ticks[row][col]  += 1;
-					if(map_default[row][col] == KEY_TOGGLE) toggle_mode = 1;  //Use the alternate map
-				} else {
-					key_ticks[row][col] = 0;
+				switch (key_history[row][col]){
+					case JUST_SWITCHED:
+						key_ticks[row][col] = 1;
+					break;
+					case STILL_ON:
+						key_ticks[row][col]  += 1;
+						if(map_def[row][col] == KEY_TOGGLE){
+							which_map = 1;  //Use the alternate map
+						}
+					break;
+					default:
+						key_ticks[row][col] = 0;
+					break;
 				}
 			}
-			//pbin(PINC); print(" "); pbin(PIND); print(" "); pbin(PINF); print("\n");
 			if(row<5){
 				PORTD |= (1<<row);
 			} else {
@@ -360,17 +366,17 @@ int main(void) {
 		for(col=0;col<COLS;col++){
 			for(row=0;row<ROWS;row++){
 				ticks = key_ticks[row][col];
-				key = (toggle_mode) ? map_toggle[row][col] : map_default[row][col];
+				key = (which_map) ? map_tog[row][col] : map_def[row][col];
 #if DEBUG == 2
 				phex(key_history[row][col]);
 #endif
 				if(key_history[row][col] == STILL_ON){
 					if (key == KEY_TOGGLE) continue; //Skip toggle buttons
-					if( key > 223 && key < 232 ){
+					if( key >= KEY_CTRL && key <= KEY_RIGHT_GUI ){
 						keyboard_modifier_keys |= 1<<(key-224); //Could also change USB report to do this
-					} else if (key >= 232 && key < 255){ //Mouse Concerns
+					} else if (key >= MOUSE_N && key <= MOUSE_SCROLL_DN){ //Mouse Concerns
 						if      (ticks > 120 ) delta = 4;
-						else if (ticks > 80 ) delta = 3;
+						else if (ticks > 80 )  delta = 3;
 						else if (ticks > 40  ) delta = 2;
 						else                   delta = 1;
 
@@ -383,7 +389,7 @@ int main(void) {
 						if (key == MOUSE_BTNL) mouse_left = 1;
 						if (key == MOUSE_BTNM) mouse_middle = 1;
 						if (key == MOUSE_BTNR) mouse_right = 1;
-
+					} else if (key >= MACRO_1 && key <= MACRO_8){ //Macro Concerns
 						if (key == MACRO_1 && macro_1_ticks == 0){
 							macro_1_ticks = 1;
 						}
