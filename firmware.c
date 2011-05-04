@@ -90,13 +90,14 @@ pair str_map[MAP_SIZE] = {
 	{"MOUSE_SCROLL_UP",MOUSE_SCROLL_UP}, {"MOUSE_SCROLL_DN",MOUSE_SCROLL_DN},
 };
 
-uint16_t lookup_id(const char* id){
-	for(int i=0;i<MAP_SIZE;i++) if(!strcmp(id,str_map[i].name)) return str_map[i].id;
+uint16_t lookup_id(const char* needle){
+	for(int i=0;i<MAP_SIZE;i++){
+		if(!strcmp(needle,str_map[i].name)){
+			return str_map[i].id;
+		}
+	}
 	return 0;
 }
-
-
-
 
 char map_def[ROWS][COLS] = {
 	//LEFT SIDE
@@ -129,18 +130,9 @@ char map_tog[ROWS][COLS] = {
 char key_history[ROWS][COLS] = {EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW};
 uint16_t key_ticks[ROWS][COLS] = {ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW};
 
-uint16_t macro_1_ticks;
-char macro_1_keys[5] = { KEY_H,     KEY_E,     KEY_L,   KEY_L,KEY_O};
-uint16_t macro_1_time[11] = { 30,100, 30,30, 30,100, 30,100,30,100,30 };
 
-
-//static uint8_t read_line(char* buffer, uint8_t buffer_length);
-//static uint32_t strtolong(const char* str);
 static uint8_t find_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name, struct fat_dir_entry_struct* dir_entry);
 static struct fat_file_struct* open_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name); 
-//static uint8_t print_disk_info(const struct fat_fs_struct* fs);
-//
-//
 
 
 void prrint(char* line){
@@ -149,7 +141,9 @@ void prrint(char* line){
 	}
 }
 
-char *tok;
+char *rest, *token, *ptr;
+char *rest2, *token2, *ptr2;
+
 uint8_t which_map, map_col, map_row = 0;
 void parse_layout(char* line){
 	if(strcmp(line,"[MAIN]")==0){
@@ -158,42 +152,59 @@ void parse_layout(char* line){
 	} else if(strcmp(line,"[TOGGLE]")==0){
 		which_map = 1;
 		map_row = 0;
-	} else { //Have full line, let's toke
+	} else {
 		map_col = 0;
-		tok = strtok(line,",");
-		while(tok != NULL){
-			if(which_map == 0) map_def[map_row][map_col] = lookup_id(tok);
-			if(which_map == 1) map_tog[map_row][map_col] = lookup_id(tok);
-			tok = strtok(NULL,",");
+		ptr = line;
+		while((token = strtok_r(ptr, ",", &rest)) != NULL) {
+			if(which_map == 0) map_def[map_row][map_col] = lookup_id(token);
+			if(which_map == 1) map_tog[map_row][map_col] = lookup_id(token);
 			map_col++;
+			ptr = rest;
 		}
 		map_row++;
 	}
 }
 
-uint8_t macro_idx = 0;
+uint16_t macro_idx = 0;
+uint16_t macro_ticks[8] = {0,0,0,0,0,0,0,0};
+uint16_t macro_steps[8][20];
+
 void parse_macro(char* line){
+	uint8_t key, length, i = 0;
 	if(memcmp(line,"[MACRO_",7)==0){
 		macro_idx = line[7] - '0' - 1;
-	} else { //Have full line, let's toke
-		tok = strtok(line,",");
-		while(tok != NULL){
-			prrint(tok);
-			tok = strtok(NULL,",");
+	} else { 
+		ptr = line;
+		while((token = strtok_r(ptr, ",", &rest)) != NULL) {
+			ptr2 = token;
+			i = length = key = 0;
+			while((token2 = strtok_r(ptr2, ":", &rest2)) != NULL) {
+				if(i==0){
+					length = atoi(token2);
+				} else if(i == 1){
+					key = lookup_id(token2);
+				}
+				i++;
+				ptr2 = rest2;
+			}
+			ptr = rest;
 		}
 	}
 }
 
+
+char macro_1_keys[5] = { KEY_H,     KEY_E,     KEY_L,   KEY_L,KEY_O};
+uint16_t macro_1_time[11] = { 30,100, 30,30, 30,100, 30,100,30,100,30 };
+
 void lineize(struct fat_file_struct* fd, void (*process_line)(char*) ){
 	uint8_t read_buffer[32];
-	uint8_t line[300];
+	char *line = (char *)malloc(200);
 	uint8_t pos = 0;
 
 	while(fat_read_file(fd, read_buffer, sizeof(read_buffer)) > 0){
 		for(uint8_t i=0;i<sizeof(read_buffer);++i){
 			switch (read_buffer[i]) {
-				case '\r': case '\t': case ' ': //Ignore white space
-				continue;
+				case '\r': case '\t': case ' ': continue;//Ignore white space
 				case '\n': //How to detect missing newline before EOF?
 					if(pos == 0) continue; //Ignore blank lines
 					line[pos] = '\0';
@@ -204,6 +215,7 @@ void lineize(struct fat_file_struct* fd, void (*process_line)(char*) ){
 			line[pos++] = read_buffer[i];
 		}
 	}
+	free(line);
 }
 
 int main(void) {
@@ -214,8 +226,6 @@ int main(void) {
 	int8_t x, y, wheel, mouse_left, mouse_middle, mouse_right;
 
 	mouse_left_prev = mouse_middle_prev = mouse_right_prev = 0;
-
-	macro_1_ticks = 0;
 
 	// set for 16 MHz clock
 	CPU_PRESCALE(0);
@@ -346,19 +356,22 @@ int main(void) {
 		x = y = wheel = 0;
 
 
-		if(macro_1_ticks){
-			for(j=0;j<11;j++){
-				if (macro_1_ticks <= macro_1_time[j]){
-					break;
+		//increment macro tick counter
+		for(macro_idx=0;macro_idx<8;macro_idx++){
+			if(macro_ticks[macro_idx]){
+				for(j=0;j<11;j++){
+					if (macro_ticks[macro_idx] <= macro_1_time[j]){
+						break;
+					}
 				}
-			}
-			if(j==11){
-				macro_1_ticks = 0;
-			} else {
-				if(j%2 == 0){
-					keyboard_keys[i++] = macro_1_keys[j/2];
+				if(j==11){
+					macro_ticks[macro_idx] = 0;
+				} else {
+					if(j%2 == 0){
+						keyboard_keys[i++] = macro_1_keys[j/2];
+					}
+					macro_ticks[macro_idx]++;
 				}
-				macro_1_ticks++;
 			}
 		}
 
@@ -390,8 +403,8 @@ int main(void) {
 						if (key == MOUSE_BTNM) mouse_middle = 1;
 						if (key == MOUSE_BTNR) mouse_right = 1;
 					} else if (key >= MACRO_1 && key <= MACRO_8){ //Macro Concerns
-						if (key == MACRO_1 && macro_1_ticks == 0){
-							macro_1_ticks = 1;
+						for(macro_idx=0;macro_idx<8;macro_idx++){
+							if (key == MACRO_1+macro_idx && macro_ticks[macro_idx] == 0) macro_ticks[macro_idx] = 1;
 						}
 					} else { //Not a special case, just boring old keypress
 						if (i<7){ //Throwing away more than 6, damn usb :(

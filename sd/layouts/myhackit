@@ -3,21 +3,21 @@ ESC        , 1          , 2          , 3          , 4          , 5          , NA
 TAB        , Q          , W          , E          , R          , T          , NA
 TOGGLE     , A          , S          , D          , F          , G          , NA
 LEFT_SHIFT , Z          , X          , C          , V          , B          , NA
-LEFT_CTRL  , LEFT_ALT   , LEFT_GUI   , NA         , SPACE      , NA         , NA
+LEFT_CTRL  , LEFT_ALT   , LEFT_GUI   , NA         , SPACE      , TOGGLE     , NA
 6          , 7          , 8          , 9          , 0          , MINUS      , BACKSPACE  
 Y          , U          , I          , O          , P          , LEFT_BRACE , RIGHT_BRACE
 H          , J          , K          , L          , SEMICOLON  , QUOTE      , ENTER      
 N          , M          , COMMA      , PERIOD     , BACKSLASH  , SLASH      , RIGHT_SHIFT
-NA         , SPACE      , NA         , RIGHT_GUI  , RIGHT_ALT  , RIGHT_CTRL , TOGGLE     
+TOGGLE     , SPACE      , NA         , RIGHT_GUI  , RIGHT_ALT  , RIGHT_CTRL , TOGGLE     
 
 [TOGGLE]
 TILDE         , F1         , F2         , F3         , F4         , F5              , NA
 TAB           , MACRO_1    , MACRO_2    , MOUSE_N    , NA         , MOUSE_SCROLL_UP , NA
 TOGGLE        , NA         , MOUSE_W    , MOUSE_S    , MOUSE_E    , MOUSE_SCROLL_DN , NA
 LEFT_SHIFT    , NA         , NA         , NA         , NA         , NA              , NA
-LEFT_CTRL     , LEFT_ALT   , LEFT_GUI   , NA         , BACKSPACE  , NA              , NA
+LEFT_CTRL     , LEFT_ALT   , LEFT_GUI   , NA         , BACKSPACE  , TOGGLE          , NA
 F6            , F7         , F8         , F9         , F10        , F11             , EQUAL      
 NA            , HOME       , UP         , END        , PAGE_UP    , INSERT          , NA              
 NA            , LEFT       , DOWN       , RIGHT      , PAGE_DOWN  , DELETE          , ENTER      
 NA            , MOUSE_BTNL , MOUSE_BTNM , MOUSE_BTNR , NA         , NA              , RIGHT_SHIFT
-NA            , BACKSPACE  , NA         , RIGHT_GUI  , RIGHT_ALT  , RIGHT_CTRL      , TOGGLE     
+TOGGLE        , BACKSPACE  , NA         , RIGHT_GUI  , RIGHT_ALT  , RIGHT_CTRL      , TOGGLE     
