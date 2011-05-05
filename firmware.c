@@ -28,6 +28,11 @@
 #define MAP_SIZE 137
 
 typedef struct{
+	int step;  // index + 1
+	int action;  // what to do
+	int ticks_left; // how long is left in this step
+} macro_state;
+typedef struct{
 	char name[30];
 	int  id;
 } pair;
@@ -167,38 +172,50 @@ void parse_layout(char* line){
 
 uint16_t macro_idx = 0;
 uint16_t macro_ticks[8] = {0,0,0,0,0,0,0,0};
+//idx,key,left
+macro_state macro_current[8][3] = {
+	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
+	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
+};
+	
+uint16_t macro_sizes[8] = {0,0,0,0,0,0,0,0};
 uint16_t macro_steps[8][20];
 
 void parse_macro(char* line){
-	uint8_t key, length, i = 0;
+	uint8_t action, length, i, j = 0;
 	if(memcmp(line,"[MACRO_",7)==0){
 		macro_idx = line[7] - '0' - 1;
 	} else { 
 		ptr = line;
+		j=0;
 		while((token = strtok_r(ptr, ",", &rest)) != NULL) {
 			ptr2 = token;
-			i = length = key = 0;
+			i = length = action = 0;
 			while((token2 = strtok_r(ptr2, ":", &rest2)) != NULL) {
 				if(i==0){
 					length = atoi(token2);
 				} else if(i == 1){
-					key = lookup_id(token2);
+					action = lookup_id(token2);
 				}
 				i++;
 				ptr2 = rest2;
 			}
+			phex(action); phex(length); print("\n");
+			macro_steps[macro_idx][(j*2)] = action;
+			macro_steps[macro_idx][(j*2)+1] = length;
 			ptr = rest;
+			j++;
 		}
+		macro_sizes[macro_idx] = j;
+		//for(j=0;j<macro_sizes[macro_idx];){
+		//	phex(j);phex(macro_steps[macro_idx][j++]); phex(macro_steps[macro_idx][j++]);print(" ");
+		//}
 	}
 }
 
-
-char macro_1_keys[5] = { KEY_H,     KEY_E,     KEY_L,   KEY_L,KEY_O};
-uint16_t macro_1_time[11] = { 30,100, 30,30, 30,100, 30,100,30,100,30 };
-
 void lineize(struct fat_file_struct* fd, void (*process_line)(char*) ){
 	uint8_t read_buffer[32];
-	char *line = (char *)malloc(200);
+	char *line = (char *)malloc(150);
 	uint8_t pos = 0;
 
 	while(fat_read_file(fd, read_buffer, sizeof(read_buffer)) > 0){
@@ -252,10 +269,6 @@ int main(void) {
 	_delay_ms(1000);
 
 
-	//16000000/s  
-	for(i=0;i<11;i++){
-		macro_1_time[i] = macro_1_time[i]+ ((i==0)?0:macro_1_time[i-1]);
-	}
 
 	print("Starting myhackit\n");
 
@@ -358,19 +371,20 @@ int main(void) {
 
 		//increment macro tick counter
 		for(macro_idx=0;macro_idx<8;macro_idx++){
-			if(macro_ticks[macro_idx]){
-				for(j=0;j<11;j++){
-					if (macro_ticks[macro_idx] <= macro_1_time[j]){
-						break;
+			if(macro_current[macro_idx]->ticks_left > 0){ //We are running
+				if(--macro_current[macro_idx]->ticks_left <= 0){ //Just now shifted step
+					if((++macro_current[macro_idx]->step) > (macro_sizes[macro_idx]-1) ){ //We are done
+						macro_current[macro_idx]->step       = 0;
+						macro_current[macro_idx]->action     = 0;
+						macro_current[macro_idx]->ticks_left = 0;
+						continue; //Next macro please
+					} else { //Go get the new step
+						macro_current[macro_idx]->action     = macro_steps[macro_idx][(macro_current[macro_idx]->step*2)];
+						macro_current[macro_idx]->ticks_left = macro_steps[macro_idx][(macro_current[macro_idx]->step*2)+1];
 					}
 				}
-				if(j==11){
-					macro_ticks[macro_idx] = 0;
-				} else {
-					if(j%2 == 0){
-						keyboard_keys[i++] = macro_1_keys[j/2];
-					}
-					macro_ticks[macro_idx]++;
+				if(macro_current[macro_idx]->action){
+					keyboard_keys[i++] = macro_current[macro_idx]->action;
 				}
 			}
 		}
@@ -404,7 +418,11 @@ int main(void) {
 						if (key == MOUSE_BTNR) mouse_right = 1;
 					} else if (key >= MACRO_1 && key <= MACRO_8){ //Macro Concerns
 						for(macro_idx=0;macro_idx<8;macro_idx++){
-							if (key == MACRO_1+macro_idx && macro_ticks[macro_idx] == 0) macro_ticks[macro_idx] = 1;
+							if (key == MACRO_1+macro_idx && macro_current[macro_idx]->ticks_left == 0){
+								macro_current[macro_idx]->step       = 0; // index
+								macro_current[macro_idx]->action     = macro_steps[macro_idx][0]; // key
+								macro_current[macro_idx]->ticks_left = macro_steps[macro_idx][1]; // time_left
+							}
 						}
 					} else { //Not a special case, just boring old keypress
 						if (i<7){ //Throwing away more than 6, damn usb :(
