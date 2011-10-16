@@ -39,6 +39,12 @@ int16_t adc_read(uint8_t mux);
 #endif
 #endif
 
+
+void mouse_auto_calibrate_center(int center_deadzone_radius);
+int mouse_x_direction(void);
+int mouse_y_direction(void);
+void mouse_update_xy(void);
+
 int8_t usb_debug_putchar(uint8_t c);	// transmit a character
 void usb_debug_flush_output(void);	// immediately transmit any buffered output
 #define USB_DEBUG_HID

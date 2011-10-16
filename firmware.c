@@ -256,6 +256,43 @@ int16_t adc_read(uint8_t mux)
     return (ADCH << 8) | low;                       // must read MSB only once!
 }
 
+uint16_t x_latest, x_min, x_min_center, x_max_center, x_max = 0;
+uint16_t y_latest, y_min, y_min_center, y_max_center, y_max = 0;
+
+void mouse_update_xy(){
+	x_latest = adc_read(7);
+	y_latest = adc_read(6);
+}
+void mouse_auto_calibrate_center(int center_deadzone_radius){
+	mouse_update_xy();
+	x_min_center = x_max_center = x_latest;
+	y_min_center = y_max_center = y_latest;
+
+	//Lets take a few samples to see how much the resting position moves
+	for(int i=0;i<100;i++){
+		mouse_update_xy();
+		if (x_latest < x_min_center) x_min_center = x_latest;
+		if (x_latest > x_max_center) x_max_center = x_latest;
+		if (y_latest < y_min_center) y_min_center = y_latest;
+		if (y_latest > y_max_center) y_max_center = y_latest;
+	}
+	// Push the measured center out a bit
+	x_min_center -= center_deadzone_radius;
+	x_max_center += center_deadzone_radius;
+	y_min_center -= center_deadzone_radius;
+	y_max_center += center_deadzone_radius;
+}
+int mouse_x_direction(){
+	if(x_latest < x_min_center) return x_latest - x_min_center; 
+	if(x_latest > x_max_center) return x_latest - x_max_center;
+	return 0;
+}
+int mouse_y_direction(){
+	if(y_latest < y_min_center) return y_latest - y_min_center;
+	if(y_latest > y_max_center) return y_latest - y_max_center;
+	return 0;
+}
+
 int main(void) {
 
 	uint8_t row, col, i, key, delta;
@@ -351,15 +388,9 @@ int main(void) {
 	lineize(fd, parse_macro);
 	fat_close_file(fd);
 
+	mouse_auto_calibrate_center(20);
 
-
-	int16_t pre_6 , cur_6, center_6;
-	int16_t pre_7 , cur_7, center_7;
-	pre_6 = cur_6 = pre_7 = cur_7 = 0;
-	center_6 = 0x22d;
-	center_7 = 0x21d;
 	while (1) {
-
 
 		// Re-initialize buffers
 		for(i=0;i<7;i++) keyboard_keys[i] = 0;
@@ -367,46 +398,23 @@ int main(void) {
 		mouse_left = mouse_middle = mouse_right = 0;
 		x = y = wheel = 0;
 
-#define DEAD_ZONE 8
-#define SENSITIVITY 40
+#define SENSITIVITY 50
 
-		cur_6 = adc_read(6);
-		if (abs(pre_6 - cur_6) > DEAD_ZONE || abs(cur_6 - pre_6) > DEAD_ZONE){
-			y = ((center_6-cur_6)/SENSITIVITY);
-			print("                         Y:");
-			if(cur_6<0) print("-");
-			phex16(cur_6);
-			print(" ");
-			phex16(center_6);
-			print(" ");
-			phex16(abs(y));
-			print("\n");
-			pre_6 = cur_6;
-		} else {
-			if(abs(center_6-cur_6)> DEAD_ZONE) y = ((center_6-cur_6)/SENSITIVITY);
-		}
+		mouse_update_xy();
+		x =      mouse_x_direction()/SENSITIVITY;
+		y = -1 * mouse_y_direction()/SENSITIVITY;
 
-		cur_7 = adc_read(7);
-		if (abs(pre_7 - cur_7) > DEAD_ZONE || abs(cur_7 - cur_7) > DEAD_ZONE){
-			x = -((center_7-cur_7)/SENSITIVITY);
-			print(" X:");
-			if(cur_7<0) print("-");
-			phex16(cur_7);
-			print(" ");
-			phex16(center_7);
-			print(" ");
-			phex16(abs(x));
-			print("\n");
-			pre_7 = cur_7;
-		} else {
-			if(abs(center_7-cur_7) > DEAD_ZONE) x = -((center_7-cur_7)/SENSITIVITY);
-		}
-		//if(cur_6<0) print("-"); phex16(cur_6);
-		//print("  ");
-		//if(cur_7<0) print("-"); phex16(cur_7);
-		//print("\n");
-
-		//usb_mouse_move(x,y,0);
+#if debug == 2
+		print("New Stuff: ");
+		if(x<0) print("-");
+		else print(" ");
+		phex16(x);
+		print(" ");
+		if(y<0) print("-");
+		else print(" ");
+		phex16(y);
+		print("\n");
+#endif
 
 		//Read in the current key state
 		which_map = 0;
