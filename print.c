@@ -63,5 +63,3 @@ void pbin(unsigned char c)
 		usb_debug_putchar((c&(1<<i))?'1':'0');
 	}
 }
-
-

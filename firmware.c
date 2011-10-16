@@ -139,6 +139,8 @@ uint16_t key_ticks[ROWS][COLS] = {ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,Z
 static uint8_t find_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name, struct fat_dir_entry_struct* dir_entry);
 static struct fat_file_struct* open_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, const char* name); 
 
+static uint8_t aref = (1<<REFS0); // default to AREF = Vcc
+
 
 void prrint(char* line){
 	for(uint8_t i=0;i<strlen(line);++i){
@@ -174,8 +176,14 @@ uint16_t macro_idx = 0;
 uint16_t macro_ticks[8] = {0,0,0,0,0,0,0,0};
 //idx,key,left
 macro_state macro_current[8][3] = {
-	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
-	{0,0,0}, {0,0,0}, {0,0,0}, {0,0,0},
+	{{0,0,0}}, 
+	{{0,0,0}}, 
+{{0,0,0}}, 
+{{0,0,0}},
+{{0,0,0}}, 
+{{0,0,0}}, 
+{{0,0,0}}, 
+{{0,0,0}},
 };
 	
 uint16_t macro_sizes[8] = {0,0,0,0,0,0,0,0};
@@ -235,9 +243,23 @@ void lineize(struct fat_file_struct* fd, void (*process_line)(char*) ){
 	free(line);
 }
 
+int16_t adc_read(uint8_t mux)
+{
+    uint8_t low;
+
+    ADCSRA = (1<<ADEN) | ADC_PRESCALER;             // enable ADC
+    ADCSRB = (1<<ADHSM) | (mux & 0x20);             // high speed mode
+    ADMUX = aref | (mux & 0x1F);                    // configure mux input
+    ADCSRA = (1<<ADEN) | ADC_PRESCALER | (1<<ADSC); // start the conversion
+    while (ADCSRA & (1<<ADSC)) ;                    // wait for result
+    low = ADCL;                                     // must read LSB first
+    return (ADCH << 8) | low;                       // must read MSB only once!
+}
+
 int main(void) {
 
-	uint8_t row, col, i, j, key, delta;
+	uint8_t row, col, i, key, delta;
+
 	uint8_t mouse_left_prev, mouse_middle_prev, mouse_right_prev;
 	uint16_t ticks;
 	int8_t x, y, wheel, mouse_left, mouse_middle, mouse_right;
@@ -247,10 +269,12 @@ int main(void) {
 	// set for 16 MHz clock
 	CPU_PRESCALE(0);
 
+	// DIDR0 = 0xC0; //Conserve energy
+
 	//0=Input 1=Output
 	DDRC = 0x00;
 	DDRD = 0x7f;
-	DDRF = 0x7f;
+	DDRF = 0x1f;
 
 	//if DDR=1, 0=Low Output, 1=High Output
 	//if DDR=0, 0=Normal, 1=Pullup Resistor
@@ -267,6 +291,7 @@ int main(void) {
 	// Wait an extra second for the PC's operating system to load drivers
 	// and do whatever it does to actually be ready for input
 	_delay_ms(1000);
+
 
 
 
@@ -326,7 +351,63 @@ int main(void) {
 	lineize(fd, parse_macro);
 	fat_close_file(fd);
 
+
+
+	int16_t pre_6 , cur_6, center_6;
+	int16_t pre_7 , cur_7, center_7;
+	pre_6 = cur_6 = pre_7 = cur_7 = 0;
+	center_6 = 0x22d;
+	center_7 = 0x21d;
 	while (1) {
+
+
+		// Re-initialize buffers
+		for(i=0;i<7;i++) keyboard_keys[i] = 0;
+		keyboard_modifier_keys = i = 0;
+		mouse_left = mouse_middle = mouse_right = 0;
+		x = y = wheel = 0;
+
+#define DEAD_ZONE 8
+#define SENSITIVITY 40
+
+		cur_6 = adc_read(6);
+		if (abs(pre_6 - cur_6) > DEAD_ZONE || abs(cur_6 - pre_6) > DEAD_ZONE){
+			y = ((center_6-cur_6)/SENSITIVITY);
+			print("                         Y:");
+			if(cur_6<0) print("-");
+			phex16(cur_6);
+			print(" ");
+			phex16(center_6);
+			print(" ");
+			phex16(abs(y));
+			print("\n");
+			pre_6 = cur_6;
+		} else {
+			if(abs(center_6-cur_6)> DEAD_ZONE) y = ((center_6-cur_6)/SENSITIVITY);
+		}
+
+		cur_7 = adc_read(7);
+		if (abs(pre_7 - cur_7) > DEAD_ZONE || abs(cur_7 - cur_7) > DEAD_ZONE){
+			x = -((center_7-cur_7)/SENSITIVITY);
+			print(" X:");
+			if(cur_7<0) print("-");
+			phex16(cur_7);
+			print(" ");
+			phex16(center_7);
+			print(" ");
+			phex16(abs(x));
+			print("\n");
+			pre_7 = cur_7;
+		} else {
+			if(abs(center_7-cur_7) > DEAD_ZONE) x = -((center_7-cur_7)/SENSITIVITY);
+		}
+		//if(cur_6<0) print("-"); phex16(cur_6);
+		//print("  ");
+		//if(cur_7<0) print("-"); phex16(cur_7);
+		//print("\n");
+
+		//usb_mouse_move(x,y,0);
+
 		//Read in the current key state
 		which_map = 0;
 		for(row=0;row<10;row++){
@@ -361,12 +442,6 @@ int main(void) {
 				PORTF |= (1<<(row-5));
 			}
 		}
-
-		// Re-initialize buffers
-		for(i=0;i<7;i++) keyboard_keys[i] = 0;
-		keyboard_modifier_keys = i = 0;
-		mouse_left = mouse_middle = mouse_right = 0;
-		x = y = wheel = 0;
 
 
 		//increment macro tick counter
