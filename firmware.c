@@ -106,7 +106,7 @@ uint16_t lookup_id(const char* needle){
 
 char map_def[ROWS][COLS] = {
 	//LEFT SIDE
-	{ KEY_ESC       , KEY_5          , KEY_2          , KEY_3          , KEY_4          , KEY_5          , 0              }, 
+	{ KEY_ESC       , KEY_1          , KEY_2          , KEY_3          , KEY_4          , KEY_5          , 0              }, 
 	{ KEY_TAB       , KEY_Q          , KEY_W          , KEY_E          , KEY_R          , KEY_T          , 0              },
 	{ KEY_CAPS_LOCK , KEY_A          , KEY_S          , KEY_D          , KEY_F          , KEY_G          , 0              },
 	{ KEY_LEFT_SHIFT, KEY_Z          , KEY_X          , KEY_C          , KEY_V          , KEY_B          , 0              },
@@ -127,9 +127,9 @@ char map_tog[ROWS][COLS] = {
 	{ KEY_LEFT_CTRL , KEY_LEFT_ALT   , KEY_LEFT_GUI   , 0              , KEY_BACKSPACE  , KEY_TOGGLE     , 0              },
 	//RIGHT SIDE
 	{ KEY_F6        , KEY_F7         , KEY_F8         , KEY_F9         , KEY_F10        , KEY_F11        , KEY_EQUAL      },
-	{ 0             , KEY_HOME       , KEY_UP         , KEY_END        , KEY_PAGE_UP    , KEY_INSERT     , 0              },
-	{ 0             , KEY_LEFT       , KEY_DOWN       , KEY_RIGHT      , KEY_PAGE_DOWN  , KEY_DELETE     , KEY_ENTER      },
-	{ 0             , MOUSE_BTNL     , MOUSE_BTNM     , MOUSE_BTNR     , 0              , 0              , KEY_RIGHT_SHIFT},
+	{ 0             , MOUSE_BTNL     , MOUSE_BTNM     , MOUSE_BTNR     , KEY_PAGE_UP    , KEY_INSERT     , 0              },
+	{ KEY_LEFT      , KEY_DOWN       , KEY_UP         , KEY_RIGHT      , KEY_PAGE_DOWN  , KEY_DELETE     , KEY_ENTER      },
+	{ 0             , KEY_HOME       , MOUSE_BTNM     , KEY_END        , 0              , 0              , KEY_RIGHT_SHIFT},
 	{ KEY_TOGGLE    , KEY_BACKSPACE  , 0              , KEY_RIGHT_GUI  , KEY_RIGHT_ALT  , KEY_RIGHT_CTRL , KEY_TOGGLE     },
 };
 char key_history[ROWS][COLS] = {EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW};
@@ -260,8 +260,8 @@ uint16_t x_latest, x_min, x_min_center, x_max_center, x_max = 0;
 uint16_t y_latest, y_min, y_min_center, y_max_center, y_max = 0;
 
 void mouse_update_xy(){
-	x_latest = adc_read(7);
-	y_latest = adc_read(6);
+	x_latest = adc_read(6);
+	y_latest = adc_read(7);
 }
 void mouse_auto_calibrate_center(int center_deadzone_radius){
 	mouse_update_xy();
@@ -388,7 +388,7 @@ int main(void) {
 	lineize(fd, parse_macro);
 	fat_close_file(fd);
 
-	mouse_auto_calibrate_center(20);
+	mouse_auto_calibrate_center(0);
 
 	while (1) {
 
@@ -398,10 +398,10 @@ int main(void) {
 		mouse_left = mouse_middle = mouse_right = 0;
 		x = y = wheel = 0;
 
-#define SENSITIVITY 50
+#define SENSITIVITY 150
 
 		mouse_update_xy();
-		x =      mouse_x_direction()/SENSITIVITY;
+		x = -1 * mouse_x_direction()/SENSITIVITY;
 		y = -1 * mouse_y_direction()/SENSITIVITY;
 
 #if debug == 2
