@@ -180,6 +180,7 @@ void usb_debug_flush_output(void);	// immediately transmit any buffered output
 #define SCROLL_S 248
 #define SCROLL_W 249
 #define SCROLL_E 250
+// Do I need these?
 #define MOUSE_H 251
 #define MOUSE_V 252
 #define SCROLL_H 253

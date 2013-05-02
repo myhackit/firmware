@@ -11,7 +11,6 @@ uint8_t find_file_in_dir(struct fat_fs_struct* fs, struct fat_dir_struct* dd, co
             return 1;
         }
     }
-
     return 0;
 }
 
@@ -20,7 +19,6 @@ struct fat_file_struct* open_file_in_dir(struct fat_fs_struct* fs, struct fat_di
     if(!find_file_in_dir(fs, dd, name, &file_entry)){
         return 0;
     }
-
     return fat_open_file(fs, &file_entry);
 }
 

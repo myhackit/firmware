@@ -151,6 +151,7 @@ static uint8_t PROGMEM mouse_hid_report_desc[] = {
 	0x95, 0x01,			//   Report Count (1),
 	0x81, 0x06,			//   Input (Data, Variable, Relative)
 //http://forum.sparkfun.com/viewtopic.php?f=14&t=23293
+//TODO enable this and see what happens
 //0x05, 0x0c,                    //     USAGE_PAGE (Consumer Devices)
 //0x0a, 0x38, 0x02,              //     USAGE (Undefined)
 //0x95, 0x01,                    //     REPORT_COUNT (1)

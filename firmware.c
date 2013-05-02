@@ -130,7 +130,7 @@ int16_t adc_read(uint8_t mux){
 	while (ADCSRA & (1<<ADSC)) ;                    // wait for result
 	low = ADCL;                                     // must read LSB first
 	return (ADCH << 8) | low;                       // must read MSB only once!
-}
+} //adc_read
 
 int check_col(int c, int r) {
 	int out = 0;
@@ -152,7 +152,7 @@ int check_col(int c, int r) {
 	print(out ? " " : "*");
 #endif
 	return out;
-}
+} // check_col
 
 void turn_row(int i, int on) {
 	int out = 0;
@@ -168,12 +168,12 @@ void turn_row(int i, int on) {
 		case 8: out = on ? (PORTC &= ~(1<<3)) : (PORTC |= (1<<3)); break;
 		case 9: out = on ? (PORTC &= ~(1<<6)) : (PORTC |= (1<<6)); break;
 	}
-}
+} // turn_row
 
 int main(void) {
 
-	uint8_t row, col, idx, key, delta, which_map;
 	int8_t mouse_h, mouse_v, scroll_h, scroll_v, mouse_btn_left, mouse_btn_middle, mouse_btn_right;
+	uint8_t row, col, idx, key, delta, which_map;
 	uint8_t mouse_btn_left_prev   = 0;
 	uint8_t mouse_btn_middle_prev = 0;
 	uint8_t mouse_btn_right_prev  = 0;
@@ -228,7 +228,7 @@ int main(void) {
 
 		// TODO Map this out into the dead spots in the grid somehow?
 		analog_update(0);
-		mouse_h = analogs[0].moving; //TODO Fine tune this
+		mouse_h = analogs[0].moving;
 		mouse_v = analogs[1].moving;
 		scroll_h = analogs[2].moving;
 		scroll_v = analogs[3].moving;
@@ -264,7 +264,6 @@ int main(void) {
 		// Determine which keys are pressed
 		for(col=0; col<COLS; col++){
 			for(row=0; row<ROWS; row++){
-				ticks = key_ticks[row][col];
 				key = maps[which_map][row][col];
 				if(key_history[row][col] == STILL_ON){
 					if (key == KEY_TOGGLE){
@@ -272,6 +271,7 @@ int main(void) {
 					} else if ( key >= KEY_CTRL && key <= KEY_RIGHT_GUI ){
 						keyboard_modifier_keys |= 1<<(key-224); // Could also change USB report to do this
 					} else if (key >= MOUSE_N && key < KEY_TOGGLE){ // Digital pointer concerns
+						ticks = key_ticks[row][col];
 						if      (ticks > 120 ) delta = 4;
 						else if (ticks > 80 )  delta = 3;
 						else if (ticks > 40  ) delta = 2;
@@ -301,10 +301,10 @@ int main(void) {
 
 		// run_macros(keyboard_keys, idx); //TODO
 
-		// Send keyboard signals
+		// Send digital keyboard signals
 		usb_keyboard_send(); // Send the buffered commands
 
-		// Send mouse signals
+		// Send alaog (mouse+wheel) signals
 		if (mouse_h || mouse_v || scroll_v || scroll_h){
 			usb_mouse_move(mouse_h, mouse_v, scroll_v, scroll_h);
 		}
@@ -320,4 +320,4 @@ int main(void) {
 		mouse_btn_right_prev  = mouse_btn_right;
 
 	} // while
-}
+} // main
