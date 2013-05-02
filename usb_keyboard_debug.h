@@ -9,7 +9,7 @@ uint8_t usb_configured(void);		// is the USB port configured
 int8_t usb_keyboard_press(uint8_t key, uint8_t modifier);
 int8_t usb_keyboard_send(void);
 int8_t usb_mouse_buttons(uint8_t left, uint8_t middle, uint8_t right);
-int8_t usb_mouse_move(int8_t x, int8_t y, int8_t wheel);
+int8_t usb_mouse_move(int8_t x, int8_t y, int8_t wheel_v, int8_t wheel_h);
 extern uint8_t keyboard_modifier_keys;
 extern uint8_t keyboard_keys[6];
 extern volatile uint8_t keyboard_leds;
@@ -159,7 +159,7 @@ void usb_debug_flush_output(void);	// immediately transmit any buffered output
 #define KEY_RIGHT_ALT	230
 #define KEY_RIGHT_GUI	231
 
-//Above 232 is "reserved" so we will piggy back our command there
+//Above 232 is "reserved" so we will piggy back our commands there
 #define MACRO_1    232
 #define MACRO_2    233
 #define MACRO_3    234
@@ -169,20 +169,22 @@ void usb_debug_flush_output(void);	// immediately transmit any buffered output
 #define MACRO_7    238
 #define MACRO_8    239
 
-#define MOUSE_N	   240
-#define MOUSE_NE   241
-#define MOUSE_E    242
-#define MOUSE_SE   243
-#define MOUSE_S    244
-#define MOUSE_SW   245
-#define MOUSE_W    246
-#define MOUSE_NW   247
-#define MOUSE_BTNL 248
-#define MOUSE_BTNM 249
-#define MOUSE_BTNR 250
-#define MOUSE_SCROLL_UP 251
-#define MOUSE_SCROLL_DN 252
-#define KEY_TOGGLE	255
+#define MOUSE_N    240
+#define MOUSE_E    241
+#define MOUSE_S    242
+#define MOUSE_W    243
+#define MOUSE_BTN_LEFT 244
+#define MOUSE_BTN_MIDDLE 245
+#define MOUSE_BTN_RIGHT 246
+#define SCROLL_N 247
+#define SCROLL_S 248
+#define SCROLL_W 249
+#define SCROLL_E 250
+#define MOUSE_H 251
+#define MOUSE_V 252
+#define SCROLL_H 253
+#define SCROLL_V 254
+#define KEY_TOGGLE  255
 
 
 
@@ -233,7 +235,7 @@ void usb_debug_flush_output(void);	// immediately transmit any buffered output
 #define PLL_CONFIG() (PLLCSR = 0x16)
 #define USB_CONFIG() (USBCON = ((1<<USBE)|(1<<OTGPADE)))
 #define USB_FREEZE() (USBCON = ((1<<USBE)|(1<<FRZCLK)))
-#endif
+#endif //__AVR_AT90USB162__
 
 // standard control endpoint request types
 #define GET_STATUS			0
@@ -256,5 +258,5 @@ void usb_debug_flush_output(void);	// immediately transmit any buffered output
 #define CDC_SET_LINE_CODING		0x20
 #define CDC_GET_LINE_CODING		0x21
 #define CDC_SET_CONTROL_LINE_STATE	0x22
-#endif
-#endif
+#endif //USB_SERIAL_PRIVATE_INCLUDE
+#endif //usb_serial_h__

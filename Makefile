@@ -50,6 +50,9 @@ SRC =	$(TARGET).c \
 	sd-reader/partition.c \
 	sd-reader/fat.c \
 	usb_keyboard_debug.c \
+	sdcard.c \
+	macro.c \
+	analog.c \
 	print.c
 
 
