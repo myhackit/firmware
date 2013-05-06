@@ -3,56 +3,69 @@
 #include "analog.h"
 
 AnalogData analogs[NUM_ANALOGS] = {
-	{0,0,0,0,0,0,0}, //R2X
-	{1,0,0,0,0,0,0}, //R2Y
-	{3,0,0,0,0,0,0}, //L1X
-	{2,0,0,0,0,0,0}, //L2Y
+	{0,0,450,590,160,860}, //LY
+	{1,0,560,650,290,900}, //LX
+	{3,0,470,580,180,800}, //RY
+	{2,0,560,610,260,880}, //RX
 };
+AnalogData *curr;
+uint16_t latest;
 
-void analog_update(int do_dead){
+static uint8_t aref = (1<<REFS0); // default to AREF = Vcc
+int16_t adc_read(uint8_t mux){
+	uint8_t low;
+	ADCSRA = (1<<ADEN) | ADC_PRESCALER;             // enable ADC
+	ADCSRB = (1<<ADHSM) | (mux & 0x20);             // high speed mode
+	ADMUX = aref | (mux & 0x1F);                    // configure mux input
+	ADCSRA = (1<<ADEN) | ADC_PRESCALER | (1<<ADSC); // start the conversion
+	while (ADCSRA & (1<<ADSC)) ;                    // wait for result
+	low = ADCL;                                     // must read LSB first
+	return (ADCH << 8) | low;                       // must read MSB only once!
+} //adc_read
+
+void analog_update(int do_calibrate){
 	for(int i=0; i<NUM_ANALOGS; i++){
-		analogs[i].latest = adc_read(analogs[i].pin);
+		curr = &analogs[i];
+		latest = adc_read(curr->pin);
 
-		// min/max are not used yet, but might be useful when tuning as we will have an idea what "100%" is
-		if(analogs[i].latest < analogs[i].min){
-			analogs[i].min = analogs[i].latest;
-		}
-		if(analogs[i].latest > analogs[i].max){
-			analogs[i].max = analogs[i].latest;
-		}
+		if(latest < curr->min) curr->min = latest;
+		if(latest > curr->max) curr->max = latest;
 
 		// How the 'deadzone' works
 		// MIN<----------(Min/DEADZONE/Max)+++++++++++>MAX
-		if(do_dead){
-			if (analogs[i].latest <= analogs[i].dead_min){
-				analogs[i].dead_min = analogs[i].latest - DEADZONE_RADIUS;
+		if(do_calibrate){
+			if (latest <= curr->dead_min){
+				curr->dead_min = (latest - DEADZONE_RADIUS);
 			}
-			if (analogs[i].latest >= analogs[i].dead_max){
-				analogs[i].dead_min = analogs[i].latest + DEADZONE_RADIUS;
+			if (latest >= curr->dead_max){
+				curr->dead_max = (latest + DEADZONE_RADIUS);
 			}
 		} else {
-			if(analogs[i].latest <= analogs[i].dead_min){
-				analogs[i].moving = (analogs[i].dead_min - analogs[i].latest)/ANALOG_SENSITIVITY;
+			if(latest < curr->dead_min){
+				curr->moving = (int) (curr->dead_min - latest);
 			}
-			else if(analogs[i].latest >= analogs[i].dead_max){
-				analogs[i].moving = (analogs[i].dead_max - analogs[i].latest)/ANALOG_SENSITIVITY;
+			else if(latest > curr->dead_max){
+				curr->moving = (int) -(latest - curr->dead_max);
 			}
 			else {
-				analogs[i].moving = 0;
+				curr->moving = 0;
 			}
 		}
+		/*
+		print("Latest:");   (latest<0)           ? print("-") : print(" "); phex16(latest);
+		print(" Delta:");   (curr->moving < 0)   ? print("-") : print(" "); phex16(curr->moving);
+		print(" Limits:("); (curr->min < 0)      ? print("-") : print(" "); phex16(curr->min);
+		print(",");         (curr->dead_min < 0) ? print("-") : print(" "); phex16(curr->dead_min);
+		print(",");         (curr->dead_max < 0) ? print("-") : print(" "); phex16(curr->dead_max);
+		print(",");         (curr->max < 0)      ? print("-") : print(" "); phex16(curr->max);
+		print(")\n");
+		*/
 	}
 } // analog_update
 
 void analog_autocalibrate_center(){
-	analog_update(0);
-	// Presume that the deadzone _is_ the latest reading
-	for(int i=0; i<NUM_ANALOGS; i++){ 
-		analogs[i].dead_min = analogs[i].dead_max = analogs[i].latest;
-	}
-
-	// Now lets take a few samples to see how much the resting position moves
-	for(int i=0;i<32;i++){
+	// Lets take a few samples to see how much the resting position moves
+	for(int i=0; i<100; i++){
 		analog_update(1);
 	}
 } // analog_autocalibrate_center

@@ -1,13 +1,12 @@
-#include <avr/io.h>
-#include <avr/pgmspace.h>
-#include <avr/interrupt.h>
+//#include <avr/pgmspace.h>
+//#include <avr/interrupt.h>
 #include <util/delay.h>
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+//#include <string.h>
+//#include <stdlib.h>
+//#include <stdio.h>
 
-#include "usb_keyboard_debug.h"
+//#include "usb_keyboard_debug.h"
 #include "print.h"
 //#include "sdcard.h"
 //#include "macro.h"
@@ -15,10 +14,10 @@
 
 #define CPU_PRESCALE(n) (CLKPR = 0x80, CLKPR = (n))
 #define EMPTY_ROW       {0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe}
-#define ZERO_ROW        {0,    0,    0,    0,    0,    0,    0}
+#define ZERO_ROW        {   0,    0,    0,    0,    0,    0,    0}
 #define JUST_SWITCHED   0x80
 #define STILL_ON        0x00
-#define DEBUG           1
+#define DEBUG           0
 #define ON              1
 #define OFF             0
 #define ROWS            10
@@ -81,10 +80,12 @@ pair str_map[MAP_SIZE] = {
 	{"RIGHT_ALT",KEY_RIGHT_ALT},   {"RIGHT_GUI",KEY_RIGHT_GUI},
 	//8 Mouse Directions
 	{"MOUSE_N",MOUSE_N},   {"MOUSE_E",MOUSE_E},   {"MOUSE_S",MOUSE_S},   {"MOUSE_W",MOUSE_W},
+	{"MOUSE_H",MOUSE_H},   {"MOUSE_V",MOUSE_V},   
 	//3 Mouse Buttons
 	{"MOUSE_BTN_LEFT",MOUSE_BTN_LEFT}, {"MOUSE_BTN_MIDDLE",MOUSE_BTN_MIDDLE}, {"MOUSE_BTN_RIGHT",MOUSE_BTN_RIGHT},
 	//4 Scroll Functions
 	{"SCROLL_N",SCROLL_N}, {"SCROLL_E",SCROLL_E}, {"SCROLL_S",SCROLL_S}, {"SCROLL_W",SCROLL_W},
+	{"SCROLL_H",SCROLL_H},   {"SCROLL_V",SCROLL_V},
 };
 
 char maps[2][ROWS][COLS] = {
@@ -94,7 +95,7 @@ char maps[2][ROWS][COLS] = {
 		{ KEY_TAB        , KEY_Q          , KEY_W          , KEY_E          , KEY_R          , KEY_T          , /*RightV*/MOUSE_V    },
 		{ KEY_CAPS_LOCK  , KEY_A          , KEY_S          , KEY_D          , KEY_F          , KEY_G          , /*LeftH*/SCROLL_H     },
 		{ KEY_LEFT_SHIFT , KEY_Z          , KEY_X          , KEY_C          , KEY_V          , KEY_B          , /*LeftV*/SCROLL_V     },
-		{ KEY_LEFT_CTRL  , KEY_LEFT_ALT   , KEY_LEFT_GUI   , /*PED1*/KEY_TOGGLE, KEY_SPACE      , MOUSE_BTN_LEFT , 0           },
+		{ KEY_LEFT_CTRL  , KEY_LEFT_ALT   , KEY_LEFT_GUI   , /*PED1*/KEY_TOGGLE, KEY_SPACE   , MOUSE_BTN_LEFT , 0           },
 		//RIGHT SIDE
 		{ KEY_6          , KEY_7          , KEY_8          , KEY_9          , KEY_0          , KEY_MINUS      , KEY_BACKSPACE  },
 		{ KEY_Y          , KEY_U          , KEY_I          , KEY_O          , KEY_P          , KEY_LEFT_BRACE , KEY_RIGHT_BRACE},
@@ -105,32 +106,20 @@ char maps[2][ROWS][COLS] = {
 	{
 		//LEFT SIDE
 		{ KEY_TILDE     , KEY_F1         , KEY_F2         , KEY_F3         , KEY_F4         , KEY_F5         , 0              }, 
-		{ KEY_TAB       , 0              , MACRO_1        , MOUSE_N        , MACRO_2        , SCROLL_N       , 0              },
-		{ KEY_CAPS_LOCK , 0              , MOUSE_W        , MOUSE_S        , MOUSE_E        , SCROLL_S       , 0              },
-		{ KEY_LEFT_SHIFT, 0              , 0              , 0              , 0              , 0              , 0              },
-		{ KEY_LEFT_CTRL , KEY_LEFT_ALT   , KEY_LEFT_GUI   , 0              , KEY_BACKSPACE  , KEY_TOGGLE     , 0              },
+		{ KEY_TAB       , 0              , MACRO_1        , MACRO_2        , MACRO_3        , 0              , 0              },
+		{ KEY_CAPS_LOCK , 0              , MOUSE_W        , MOUSE_N        , MOUSE_S        , MOUSE_E        , 0              },
+		{ KEY_LEFT_SHIFT, 0              , SCROLL_W       , SCROLL_N       , SCROLL_S       , SCROLL_E       , 0              },
+		{ KEY_LEFT_CTRL , KEY_LEFT_ALT   , KEY_LEFT_GUI   , 0              , KEY_BACKSPACE  , MOUSE_BTN_LEFT , 0              },
 		//RIGHT SIDE
 		{ KEY_F6        , KEY_F7         , KEY_F8         , KEY_F9         , KEY_F10        , KEY_F11        , KEY_EQUAL      },
 		{ 0             , MOUSE_BTN_LEFT , MOUSE_BTN_MIDDLE, MOUSE_BTN_RIGHT, KEY_PAGE_UP    , KEY_INSERT     , 0              },
 		{ KEY_LEFT      , KEY_DOWN       , KEY_UP         , KEY_RIGHT      , KEY_PAGE_DOWN  , KEY_DELETE     , KEY_ENTER      },
 		{ 0             , KEY_HOME       , 0              , KEY_END        , 0              , 0              , KEY_RIGHT_SHIFT},
-		{ KEY_TOGGLE    , KEY_BACKSPACE  , 0              , KEY_RIGHT_GUI  , KEY_RIGHT_ALT  , KEY_RIGHT_CTRL , KEY_TOGGLE     },
+		{ MOUSE_BTN_RIGHT, KEY_BACKSPACE  , 0              , KEY_RIGHT_GUI  , KEY_RIGHT_ALT  , KEY_RIGHT_CTRL , KEY_TOGGLE     },
 	}
 };
 char key_history[ROWS][COLS] = {EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW,EMPTY_ROW};
 uint16_t key_ticks[ROWS][COLS] = {ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW,ZERO_ROW};
-
-static uint8_t aref = (1<<REFS0); // default to AREF = Vcc
-int16_t adc_read(uint8_t mux){
-	uint8_t low;
-	ADCSRA = (1<<ADEN) | ADC_PRESCALER;             // enable ADC
-	ADCSRB = (1<<ADHSM) | (mux & 0x20);             // high speed mode
-	ADMUX = aref | (mux & 0x1F);                    // configure mux input
-	ADCSRA = (1<<ADEN) | ADC_PRESCALER | (1<<ADSC); // start the conversion
-	while (ADCSRA & (1<<ADSC)) ;                    // wait for result
-	low = ADCL;                                     // must read LSB first
-	return (ADCH << 8) | low;                       // must read MSB only once!
-} //adc_read
 
 int check_col(int c, int r) {
 	int out = 0;
@@ -148,8 +137,9 @@ int check_col(int c, int r) {
 		case 11: out = (PINE & (1<<7)); break; // Pedal 2
 	}
 	out = (out ^ 0); // Inverting for pullup resistors
-#if DEBUG == 2
-	print(out ? " " : "*");
+#if DEBUG
+	if (out) print(" ");
+	else print("*");
 #endif
 	return out;
 } // check_col
@@ -188,7 +178,7 @@ int main(void) {
 	//0=In 1=Out
 	//     0b76543210;
 	DDRC = 0b01111100;
-	DDRD = 0b00011111;
+	DDRD = 0b01011111;
 	DDRE = 0b11000000;
 	DDRF = 0b00000000;
 
@@ -196,7 +186,7 @@ int main(void) {
 	//if DDR=1, 0=Low Output, 1=High Output
 	//      0b76543210;
 	PORTC = 0b11111111;
-	PORTD = 0b11111111;
+	PORTD = 0b10111111; //LED off till board is ready
 	PORTE = 0b11111111;
 	PORTF = 0b11111111;
 
@@ -210,14 +200,20 @@ int main(void) {
 	// and do whatever it does to actually be ready for input
 	_delay_ms(1000);
 
-	print("Starting myhackit\n");
+	print("Initializing\n");
 
 	analog_autocalibrate_center();
 
-	print("Autocalibrate complete\n");
+	print("Autocalibration - DONE\n");
 
 	//TODO PARSE SD CARD
 
+	//PORTD &= ~(1<<6);
+	PORTD |= (1<<6); //Turn LED on?
+
+	print("Myhackit is ready!\n");
+
+	uint16_t test=0;
 	while (1) { // Main logic loop
 
 		// Re-initialize buffers
@@ -227,11 +223,23 @@ int main(void) {
 		mouse_h = mouse_v = scroll_h = scroll_v = 0;
 
 		// TODO Map this out into the dead spots in the grid somehow?
+
+		test++;
 		analog_update(0);
-		mouse_h = analogs[0].moving;
-		mouse_v = analogs[1].moving;
-		scroll_h = analogs[2].moving;
-		scroll_v = analogs[3].moving;
+		if(test % 32 == 0) {
+			mouse_h  = analogs[3].moving/20;
+			mouse_v  = analogs[2].moving/20;
+		}
+		if(test % 128 == 0) {
+			scroll_v = analogs[0].moving/20; //~250-290 total points
+			scroll_h = analogs[1].moving/20;
+		}
+
+#if DEBUG
+		print("\n");
+		_delay_ms(20);
+		continue;
+#endif
 
 		// Read in the current key state
 		which_map = 0;
@@ -242,6 +250,9 @@ int main(void) {
 					key_history[row][col] |= 1;
 				}
 				key_history[row][col] <<= 1;
+#if DEBUG
+				phex(key_history[row][col]);print(" ");
+#endif
 
 				switch (key_history[row][col]){
 					case JUST_SWITCHED:
@@ -256,48 +267,59 @@ int main(void) {
 					default:
 						key_ticks[row][col] = 0;
 					break;
-				}
-			}
+				} //switch
+			} //for col
 			turn_row(row, OFF);
-		}
+#if DEBUG
+			print("\n");
+#endif
+		} //for row
+
+#if DEBUG
+		print("\n");
+		_delay_ms(20);
+		continue;
+#endif
 
 		// Determine which keys are pressed
 		for(col=0; col<COLS; col++){
 			for(row=0; row<ROWS; row++){
-				key = maps[which_map][row][col];
-				if(key_history[row][col] == STILL_ON){
-					if (key == KEY_TOGGLE){
-						continue; // Skip toggle buttons
-					} else if ( key >= KEY_CTRL && key <= KEY_RIGHT_GUI ){
-						keyboard_modifier_keys |= 1<<(key-224); // Could also change USB report to do this
-					} else if (key >= MOUSE_N && key < KEY_TOGGLE){ // Digital pointer concerns
-						ticks = key_ticks[row][col];
-						if      (ticks > 120 ) delta = 4;
-						else if (ticks > 80 )  delta = 3;
-						else if (ticks > 40  ) delta = 2;
-						else                   delta = 1;
-
-						if (key == MOUSE_N) mouse_v -= delta;
-						if (key == MOUSE_S) mouse_v += delta;
-						if (key == MOUSE_E) mouse_h += delta;
-						if (key == MOUSE_W) mouse_h -= delta;
-						if (key == MOUSE_BTN_LEFT)   mouse_btn_left = 1;
-						if (key == MOUSE_BTN_MIDDLE) mouse_btn_middle = 1;
-						if (key == MOUSE_BTN_RIGHT)  mouse_btn_right = 1;
-						if (key == SCROLL_N && ticks % ANALOG_SPEED == 1) scroll_v = delta;
-						if (key == SCROLL_E && ticks % ANALOG_SPEED == 1) scroll_h = -delta;
-						if (key == SCROLL_S && ticks % ANALOG_SPEED == 1) scroll_v = -delta;
-						if (key == SCROLL_W && ticks % ANALOG_SPEED == 1) scroll_h = delta;
-					} else if (key >= MACRO_1 && key <= MACRO_8){ //Macro Concerns
-						start_macro(MACRO_1 - key);
-					} else { //  Not a special case, just boring old keypress
-						if (idx<7){ //  Throwing away more than 6 at a time, damn usb :(
-							keyboard_keys[idx++] = key;
-						}
-					}
+				if(key_history[row][col] != STILL_ON){ //We only care about non-bounced
+					continue;
 				}
-			}
-		}
+
+				key = maps[which_map][row][col];
+				if (key == KEY_TOGGLE){
+					continue; // Skip toggle buttons
+				} else if ( key >= KEY_CTRL && key <= KEY_RIGHT_GUI ){
+					keyboard_modifier_keys |= 1<<(key-224); // Could also change USB report to do this
+				} else if (key >= MOUSE_N && key < KEY_TOGGLE){ // Digital pointer concerns
+					ticks = key_ticks[row][col];
+					if      (ticks > 120 ) delta = 4;
+					else if (ticks > 80 )  delta = 3;
+					else if (ticks > 40  ) delta = 2;
+					else                   delta = 1;
+
+					if (key == MOUSE_N) mouse_v -= delta;
+					if (key == MOUSE_S) mouse_v += delta;
+					if (key == MOUSE_E) mouse_h += delta;
+					if (key == MOUSE_W) mouse_h -= delta;
+					if (key == MOUSE_BTN_LEFT)   mouse_btn_left = 1;
+					if (key == MOUSE_BTN_MIDDLE) mouse_btn_middle = 1;
+					if (key == MOUSE_BTN_RIGHT)  mouse_btn_right = 1;
+					if (key == SCROLL_N && ticks % ANALOG_SPEED == 1) scroll_v = delta;
+					if (key == SCROLL_E && ticks % ANALOG_SPEED == 1) scroll_h = -delta;
+					if (key == SCROLL_S && ticks % ANALOG_SPEED == 1) scroll_v = -delta;
+					if (key == SCROLL_W && ticks % ANALOG_SPEED == 1) scroll_h = delta;
+				} else if (key >= MACRO_1 && key <= MACRO_8){ //Macro Concerns
+					//start_macro(MACRO_1 - key); //TODO
+				} else { //  Not a special case, just boring old keypress
+					if (idx<7){ //  Throwing away more than 6 at a time, damn usb :(
+						keyboard_keys[idx++] = key;
+					}
+				} // if decide
+			} // for row
+		} //for col
 
 		// run_macros(keyboard_keys, idx); //TODO
 
